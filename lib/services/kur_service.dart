@@ -64,7 +64,16 @@ class KurService {
       'CEYREKALTIN',
       'YARIMALTIN',
       'TAMALTIN',
+      "CUMHURIYETALTINI",
+      "ATAALTIN",
+      "14AYARALTIN",
+      "18AYARALTIN",
+      "22AYARALTIN",
+      "IKIBUCUKALTIN",
+      "BESLIALTIN",
+      "GREMSEALTIN",
       'GUMUS',
+
     ];
 
     List<KurModel> list = [];
