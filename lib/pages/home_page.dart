@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-// Importlarınızı kendi proje yapınıza göre kontrol edin
 import '../services/kur_storage_service.dart';
 import '../models/add_doviz_model.dart';
 import 'add_page.dart';
 import 'kur_detail_page.dart';
 import 'kur_page.dart';
+import 'login_page.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -32,7 +33,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
-      appBar: AppBar(
+    appBar: AppBar(
         title: const Text(
           'YASTIK ALTI',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -41,7 +42,20 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black,
+        // 🔹 EKLEME BURADA:
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined), // Profil/Login ikonu
+            onPressed: () {
+             Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()));
+            },
+          ),
+          const SizedBox(width: 8), // Sağ kenardan biraz boşluk
+        ],
       ),
+
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -77,29 +91,42 @@ class HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<HomeTab> {
   final KurStorageService storage = KurStorageService();
+
   final NumberFormat tlFormat = NumberFormat.currency(
     locale: 'tr_TR',
     symbol: '₺',
     decimalDigits: 2,
   );
 
+  // 🔹 EKLENDİ: Kâr için binlik ayraçlı format
+  final NumberFormat profitFormat = NumberFormat('#,##0', 'tr_TR');
+
+  // 🔹 EKLENDİ: Büyük % değerler için scientific format
+  String formatRate(double rate) {
+    if (rate.abs() >= 100000) {
+      return rate.toStringAsExponential(2);
+    } else {
+      return rate.toStringAsFixed(2);
+    }
+  }
+
   Future<Map<String, double>> _calculateTotals(String code) async {
     List<EklenenKurModel> list = [];
     if (code == 'ALTIN') {
       final altinKodlari = [
-      'GRA',
-      'CEYREKALTIN',
-      'YARIMALTIN',
-      'TAMALTIN',
-      "CUMHURIYETALTINI",
-      "ATAALTIN",
-      "14AYARALTIN",
-      "18AYARALTIN",
-      "22AYARALTIN",
-      "IKIBUCUKALTIN",
-      "BESLIALTIN",
-      "GREMSEALTIN",
-      'GUMUS',
+        'GRA',
+        'CEYREKALTIN',
+        'YARIMALTIN',
+        'TAMALTIN',
+        "CUMHURIYETALTINI",
+        "ATAALTIN",
+        "14AYARALTIN",
+        "18AYARALTIN",
+        "22AYARALTIN",
+        "IKIBUCUKALTIN",
+        "BESLIALTIN",
+        "GREMSEALTIN",
+        'GUMUS',
       ];
       for (final c in altinKodlari) {
         list.addAll(await storage.loadKur(c));
@@ -227,7 +254,6 @@ class _HomeTabState extends State<HomeTab> {
                               style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 14),
-                            // GÜNCEL KISIM: TL ve % yan yana
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
@@ -244,12 +270,12 @@ class _HomeTabState extends State<HomeTab> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    "${isPositive ? '+' : ''}${profit.toStringAsFixed(2)} ₺",
+                                    "${isPositive ? '+' : ''}${profitFormat.format(profit)} ₺",
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                   ),
-                                  const VerticalDivider(color: Colors.white24, width: 20, thickness: 1), // Görsel ayraç
+                                  const VerticalDivider(color: Colors.white24, width: 20, thickness: 1),
                                   Text(
-                                    "%${rate.toStringAsFixed(2)}",
+                                    "%${formatRate(rate)}",
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 13),
                                   ),
                                 ],
@@ -265,7 +291,6 @@ class _HomeTabState extends State<HomeTab> {
             },
           );
         }),
-        // Alt Banner (Genel Toplam)
         FutureBuilder<Map<String, double>>(
           future: _calculateGrandTotal(),
           builder: (context, snapshot) {
@@ -291,18 +316,35 @@ class _HomeTabState extends State<HomeTab> {
                     children: [
                       const Text("Toplam Net Varlık", style: TextStyle(color: Colors.white70, fontSize: 12)),
                       const SizedBox(height: 4),
-                      Text(tlFormat.format(total), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                      Text(
+                        tlFormat.format(total),
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                   Row(
                     children: [
-                      Icon(isPositive ? Icons.arrow_upward : Icons.arrow_downward, color: isPositive ? const Color(0xFF69F0AE) : const Color(0xFFFF5252), size: 18),
+                      Icon(
+                        isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+                        color: isPositive ? const Color(0xFF69F0AE) : const Color(0xFFFF5252),
+                        size: 18,
+                      ),
                       const SizedBox(width: 6),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text("${isPositive ? '+' : ''}${profit.toStringAsFixed(2)} ₺", style: TextStyle(color: isPositive ? const Color(0xFF69F0AE) : const Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 14)),
-                          Text("%${rate.toStringAsFixed(2)}", style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                          Text(
+                            "${isPositive ? '+' : ''}${profitFormat.format(profit)} ₺",
+                            style: TextStyle(
+                              color: isPositive ? const Color(0xFF69F0AE) : const Color(0xFFFF5252),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            "%${formatRate(rate)}",
+                            style: const TextStyle(color: Colors.white60, fontSize: 11),
+                          ),
                         ],
                       ),
                     ],

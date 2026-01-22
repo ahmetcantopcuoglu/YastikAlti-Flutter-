@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -11,9 +13,17 @@ class MyHttpOverrides extends HttpOverrides {
   }
 }
 
-void main() {
+void main() async {
+  // 1. Flutter motorunun hazır olduğundan emin ol
   WidgetsFlutterBinding.ensureInitialized();
-  HttpOverrides.global = MyHttpOverrides();
+  
+  // 2. Firebase'i başlat
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    print("Firebase başlatılamadı: $e");
+  }
+
   runApp(MyApp());
 }
 
