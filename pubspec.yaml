@@ -14,10 +14,10 @@ dependencies:
   http: ^1.2.0
   cupertino_icons: ^1.0.8
   intl: ^0.20.2
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.15.3
-  cloud_firestore: ^4.13.3
-  sign_in_with_apple: ^5.0.0
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  sign_in_with_apple: ^7.0.1
 
 dev_dependencies:
   flutter_test:
