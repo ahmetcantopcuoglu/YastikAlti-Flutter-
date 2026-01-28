@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/kur_storage_service.dart';
 import '../models/add_doviz_model.dart';
@@ -7,7 +9,6 @@ import 'add_page.dart';
 import 'kur_detail_page.dart';
 import 'kur_page.dart';
 import 'login_page.dart';
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,11 +20,46 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
+  User? _currentUser;
+  String? _userName;
+
   final List<Widget> _pages = const [
     HomeTab(),
     AddPage(),
     KurPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = FirebaseAuth.instance.currentUser;
+
+    if (_currentUser != null) {
+      _loadUserName();
+    }
+  }
+
+  Future<void> _loadUserName() async {
+    if (_currentUser == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(_currentUser!.uid)
+        .get();
+
+    final data = doc.data();
+    print("USER DATA: $data");
+
+    if (data == null) return;
+
+    setState(() {
+      _userName = data['full_name'] ??
+          data['name'] ??
+          data['username'] ??
+          data['email'] ??
+          'Kullanıcı';
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
@@ -33,7 +69,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
-    appBar: AppBar(
+      appBar: AppBar(
         title: const Text(
           'YASTIK ALTI',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -42,20 +78,121 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black,
-        // 🔹 EKLEME BURADA:
+        
+        // 🔹 GÜNCELLENEN KISIM BAŞLIYOR 🔹
         actions: [
           IconButton(
-            icon: const Icon(Icons.account_circle_outlined), // Profil/Login ikonu
-            onPressed: () {
-             Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginPage()));
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () async {
+              // Giriş yoksa → direkt login sayfasına git
+              if (_currentUser == null) {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+
+                // Login sayfasından dönünce kullanıcıyı tekrar kontrol et
+                _currentUser = FirebaseAuth.instance.currentUser;
+                await _loadUserName();
+                return;
+              }
+
+              // Giriş varsa → Profil menüsünü aç
+              final selected = await showMenu<String>(
+                context: context,
+                // Menünün açılacağı konumu ayarlıyoruz
+                position: const RelativeRect.fromLTRB(1000, 80, 8, 0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16), // Menü kenarları yuvarlatıldı
+                ),
+                items: [
+                  // --- 1. SEÇENEK TASARIMI (Profil Kartı) ---
+                  PopupMenuItem<String>(
+                    enabled: false, // Tıklanamaz, sadece bilgi gösterir
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          // Avatar (Baş harf)
+                          CircleAvatar(
+                            backgroundColor: const Color(0xFF2E7D32).withOpacity(0.15),
+                            radius: 20,
+                            child: Text(
+                              (_userName != null && _userName!.isNotEmpty)
+                                  ? _userName![0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                  color: Color(0xFF2E7D32), 
+                                  fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // İsim
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _userName ?? 'Kullanıcı',
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Text(
+                                  "Hesabım",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const PopupMenuDivider(), // Araya çizgi
+                  
+                  // Çıkış Yap Butonu
+                  const PopupMenuItem<String>(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, color: Colors.redAccent, size: 20),
+                        SizedBox(width: 10),
+                        Text(
+                          'Çıkış Yap',
+                          style: TextStyle(
+                            color: Colors.redAccent, 
+                            fontWeight: FontWeight.w500
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+
+              // Seçilen işleme göre aksiyon al
+              if (selected == 'logout') {
+                await FirebaseAuth.instance.signOut();
+                setState(() {
+                  _currentUser = null;
+                  _userName = null; // İsmi de sıfırla
+                });
+              }
             },
           ),
-          const SizedBox(width: 8), // Sağ kenardan biraz boşluk
+          const SizedBox(width: 8),
         ],
+        // 🔹 GÜNCELLENEN KISIM BİTTİ 🔹
       ),
-
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -82,6 +219,8 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+// --- ALTTAKİ TAB CLASSLARI DEĞİŞMEDİ ---
+
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
@@ -98,10 +237,8 @@ class _HomeTabState extends State<HomeTab> {
     decimalDigits: 2,
   );
 
-  // 🔹 EKLENDİ: Kâr için binlik ayraçlı format
   final NumberFormat profitFormat = NumberFormat('#,##0', 'tr_TR');
 
-  // 🔹 EKLENDİ: Büyük % değerler için scientific format
   String formatRate(double rate) {
     if (rate.abs() >= 100000) {
       return rate.toStringAsExponential(2);

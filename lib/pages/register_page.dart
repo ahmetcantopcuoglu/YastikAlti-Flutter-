@@ -48,10 +48,17 @@ class _RegisterPageState extends State<RegisterPage> {
         });
 
         // Başarılı Mesajı ve Yönlendirme
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Başarıyla kayıt oldunuz!")));
-          Navigator.pop(context); // Giriş sayfasına geri döner veya HomePage'e push yapabilirsin
-        }
+       if (mounted) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Başarıyla kayıt oldunuz 🎉"),
+      duration: Duration(seconds: 2),
+    ),
+  );
+
+  await Future.delayed(const Duration(seconds: 2));
+  Navigator.pop(context);
+}
       }
     } on FirebaseAuthException catch (e) {
       String message = "Bir hata oluştu";

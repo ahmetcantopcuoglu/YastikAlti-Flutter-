@@ -4,6 +4,8 @@ import '../models/add_doviz_model.dart';
 import '../services/kur_service.dart';
 import '../services/kur_storage_service.dart';
 import '../models/kur_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'login_page.dart'; // Giriş sayfasına yönlendirmek için
 
 class AddPage extends StatefulWidget {
   const AddPage({super.key});
@@ -70,6 +72,37 @@ class _AddPageState extends State<AddPage> {
   }
 
   void _ekle() async {
+
+    // 1. ADIM: GİRİŞ VE LİMİT KONTROLÜ
+  final currentUser = FirebaseAuth.instance.currentUser;
+
+  // Eğer kullanıcı giriş YAPMAMIŞSA limit kontrolü yap
+  if (currentUser == null) {
+    int totalCount = 0;
+    
+    // Uygulamanızdaki tüm ana kod kategorileri
+    final categories = [
+      'USD', 'EUR', 'GRA', 'CEYREKALTIN', 'YARIMALTIN', 'TAMALTIN', 
+      'CUMHURIYETALTINI', 'ATAALTIN', '14AYARALTIN', '18AYARALTIN', 
+      '22AYARALTIN', 'IKIBUCUKALTIN', 'BESLIALTIN', 'GREMSEALTIN', 'GUMUS'
+    ];
+
+    // Her kategoriyi tek tek kontrol et ve toplam kayıt sayısını bul
+    for (var code in categories) {
+      final list = await storage.loadKur(code);
+      totalCount += list.length;
+    }
+
+    // Toplam kayıt 3 veya daha fazlaysa durdur ve Dialog göster
+    if (totalCount >= 3) {
+      if (!mounted) return;
+      _showLimitDialog(); // Bu fonksiyonu aşağıya ekleyeceğiz
+      return;
+    }
+  }
+
+
+    
     final adetText = _adetController.text.replaceAll(',', '.');
     final alisText = _alisController.text.replaceAll(',', '.');
 
@@ -96,6 +129,19 @@ class _AddPageState extends State<AddPage> {
       return;
     }
 
+    // Kullanıcı takvimden sadece GÜN seçse bile, biz o anki saati/dakikayı/mikrosaniyeyi ekliyoruz.
+    final now = DateTime.now();
+    final uniqueDate = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      now.hour,
+      now.minute,
+      now.second,
+      now.millisecond,
+      now.microsecond, // Bu her kaydı eşsiz (unique) yapar
+    );
+
     final kurlar = await KurService().fetchKurlar();
     final kur = kurlar.firstWhere((e) => e.code == selectedCode,
         orElse: () => kurlar.first);
@@ -105,7 +151,7 @@ class _AddPageState extends State<AddPage> {
       name: kur.name,
       adet: adet,
       alisKuru: alis,
-      tarih: selectedDate,
+      tarih: uniqueDate,
       guncelKur: kur.selling,
     );
 
@@ -119,6 +165,7 @@ class _AddPageState extends State<AddPage> {
           content: Text('Başarıyla eklendi!'),
           backgroundColor: Colors.black87,
           behavior: SnackBarBehavior.floating,
+          duration: Duration(milliseconds: 500),
         ),
       );
       _adetController.clear();
@@ -410,6 +457,46 @@ class _AddPageState extends State<AddPage> {
       ),
     );
   }
+
+  void _showLimitDialog() {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Row(
+        children: [
+          Icon(Icons.lock_outline, color: Colors.amber),
+          SizedBox(width: 10),
+          Text("Limit Doldu"),
+        ],
+      ),
+      content: const Text(
+        "Misafir kullanıcı olarak en fazla 3 kayıt ekleyebilirsiniz. "
+        "Daha fazla kayıt eklemek için lütfen giriş yapın.",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Vazgeç", style: TextStyle(color: Colors.grey)),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context); // Dialogu kapat
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          child: const Text("Giriş Yap / Kayıt Ol", style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
 
   InputDecoration _inputDecoration(
       String label, IconData icon, Color primaryColor) {

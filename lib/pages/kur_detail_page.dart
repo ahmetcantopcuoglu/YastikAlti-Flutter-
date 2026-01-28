@@ -103,18 +103,39 @@ class _KurDetailPageState extends State<KurDetailPage> {
     }
   }
 
-  Future<void> _deleteItem(int index, EklenenKurModel item) async {
-    if (_isProcessing) return;
-    _isProcessing = true;
-    setState(() { eklenenler.removeAt(index); });
-    try {
-      final storedList = await storage.loadKur(item.code);
-      storedList.removeWhere((e) => e.tarih.millisecondsSinceEpoch == item.tarih.millisecondsSinceEpoch);
-      await storage.saveKur(item.code, storedList);
-      if (mounted) { _showCountdownToast(index, item); }
-    } catch (e) { debugPrint("Silme hatası: $e"); } 
-    finally { _isProcessing = false; }
+ // KurDetailPage içindeki _deleteItem metodunu böyle revize et:
+Future<void> _deleteItem(int index, EklenenKurModel item) async {
+  if (_isProcessing) return;
+  _isProcessing = true;
+
+  // 1. Arayüzden anlık kaldır
+  setState(() {
+    eklenenler.removeAt(index);
+  });
+
+  try {
+    // 2. Depodaki güncel listeyi çek
+    List<EklenenKurModel> storedList = await storage.loadKur(item.code);
+
+    // 3. Sadece seçilen öğeyi milisaniye hassasiyetiyle bul ve çıkar
+    storedList.removeWhere((element) => 
+      element.tarih.millisecondsSinceEpoch == item.tarih.millisecondsSinceEpoch
+    );
+
+    // 4. Güncellenmiş listeyi (kalanları) tekrar kaydet
+    await storage.saveKur(item.code, storedList);
+
+    if (mounted) {
+      _showCountdownToast(index, item);
+    }
+  } catch (e) {
+    debugPrint("Silme hatası oluştu: $e");
+    // Hata olursa veriyi geri getir (Opsiyonel)
+    _loadKur(); 
+  } finally {
+    _isProcessing = false;
   }
+}
 
   void _showCountdownToast(int index, EklenenKurModel item) {
     _overlayEntry?.remove();
